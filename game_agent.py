@@ -245,26 +245,26 @@ class MinimaxPlayer(IsolationPlayer):
 
             # Assuming we are maximizing the chance of player1, then the top level
             # will do maximizing and then alternate after
-            player = game.inactive_player
+            player = game.active_player
 
             # Possible moves are basically overlap of blank spaces and the possible moved
             possible_moves = g.get_legal_moves()
-            possible_moves  = list(set(possible_moves) & set(blank_spaces))
+            possible_moves = list(set(possible_moves) & set(blank_spaces))
 
             # If reached the bottom level, just return the scores -- Nothing else to do
             if level == depth:
                 for i in range(len(possible_moves)):
                     # for move in possible_moves:
                     new_board = g.forecast_move(possible_moves[i])
-                    scores_dict[str(l) + '-' + str(i + 1)] = [self.score(new_board, player), possible_moves[i]]
+                    scores_dict[str(l) + '-' + str(i)] = [self.score(new_board, player), possible_moves[i]]
                     return scores_dict
 
             else:
                 for i in range(len(possible_moves)):
                     # for move in possible_moves:
                     new_board = g.forecast_move(possible_moves[i])
-                    scores_dict[str(l) + '-' + str(i + 1)] = [self.score(new_board, player), possible_moves[i]]
-                    queue.append([str(l) + '-' + str(i + 1), new_board])
+                    scores_dict[str(l) + '-' + str(i)] = [self.score(new_board, player), possible_moves[i]]
+                    queue.append([str(l) + '-' + str(i), new_board])
 
         return scores_dict
 
@@ -272,7 +272,7 @@ class MinimaxPlayer(IsolationPlayer):
     def next_best_move(self, scores):
         """
         Find the next best move using miniMax Logic
-            Parameters
+        Parameters
         ----------
         scores: dictionary 'board state key': {'score', 'move'}
             scores for all the possible board states down to the depth.
@@ -313,7 +313,7 @@ class MinimaxPlayer(IsolationPlayer):
                 # The branching factor is definitely less than the board size!
                 try:
                     # Go over all childs
-                    for i in range(1, width * height + 1):
+                    for i in range(width * height):
 
                         # Find the child score
                         child_node = node + '-' + str(i)
@@ -326,7 +326,13 @@ class MinimaxPlayer(IsolationPlayer):
                                 max_score = max(child_score, max_score)
                                 # Find the best move so far
                                 best_move = scores[child_node][-1]
-                                scores['0'] = best_move
+                                #scores['0'] = best_move
+
+                            # Capture the final move
+                            if max_score == float('-inf'):
+                                return (-1,-1)
+                            else:
+                                return best_move
 
                         elif level % 2 == 0:
                             # If found a new MAX
@@ -392,10 +398,9 @@ class MinimaxPlayer(IsolationPlayer):
             raise SearchTimeout()
 
         scores = self.iterative_deepening_depth_limited(game, depth)
-        self.next_best_move(scores)
+        best_move = self.next_best_move(scores)
 
-        #return scores['0']
-        return (1,1)
+        return best_move
 
 
 class AlphaBetaPlayer(IsolationPlayer):
