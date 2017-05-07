@@ -296,12 +296,11 @@ class MinimaxPlayer(IsolationPlayer):
             # scores keys are constructed as level0-level1-level2-...-leveln
             nodes = [x for x in scores if (len(x.split('-')) - 1) == level]
 
-
             if level == 0:
 
                 # -inf for MAX (inf for Min) If there are no legal moves
                 max_score = float('-inf')
-
+                best_move = (-1, -1)
                 for node in nodes:
 
                     # The branching factor is definitely less than the board size!
@@ -318,15 +317,12 @@ class MinimaxPlayer(IsolationPlayer):
                                 max_score = max(child_score, max_score)
                                 # Find the best move so far
                                 best_move = scores[child_node][-1]
-
-                            # Capture the final move
-                            if max_score == float('-inf'):
-                                return (-1, -1)
-                            else:
-                                return best_move
-
                     except:
                         continue
+
+                return best_move
+
+
 
             elif level % 2 == 0:
 
