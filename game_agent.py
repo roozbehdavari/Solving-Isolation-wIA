@@ -152,25 +152,20 @@ class MinimaxPlayer(IsolationPlayer):
     def get_move(self, game, time_left):
         """Search for the best move from the available legal moves and return a
         result before the time limit expires.
-
         **************  YOU DO NOT NEED TO MODIFY THIS FUNCTION  *************
-
         For fixed-depth search, this function simply wraps the call to the
         minimax method, but this method provides a common interface for all
         Isolation agents, and you will replace it in the AlphaBetaPlayer with
         iterative deepening search.
-
         Parameters
         ----------
         game : `isolation.Board`
             An instance of `isolation.Board` encoding the current state of the
             game (e.g., player locations and blocked cells).
-
         time_left : callable
             A function that returns the number of milliseconds left in the
             current turn. Returning with any less than 0 ms remaining forfeits
             the game.
-
         Returns
         -------
         (int, int)
@@ -196,7 +191,7 @@ class MinimaxPlayer(IsolationPlayer):
 
 
     # TODO: finish this function!
-    def iterative_deepening_depth_limited(self, game, depth):
+    def scores_depth_limited(self, game, depth):
         """
         Find the scores for all the possible moves down to the given depth
 
@@ -205,22 +200,24 @@ class MinimaxPlayer(IsolationPlayer):
         game : isolation.Board
             An instance of the Isolation game `Board` class representing the
             current game state
-
         depth : int
             Depth is an integer representing the maximum number of plies to
             search in the game tree before aborting
-
         Returns
         -------
         scores: dictionary
             scores for all the possible board states down to the depth
         """
+        if self.time_left() < self.TIMER_THRESHOLD:
+            raise SearchTimeout()
 
-        # Used for BFS search for each level
+        # Used for BFS search for each exploring children of each node
         queue = [['0', game]]
 
-        # For capturing the scores at the bottom level
+        # For capturing the scores
         scores_dict = dict()
+
+        # Will be used for next_best_move function
         scores_dict['depth'] = depth
         scores_dict['width'] = game.width
         scores_dict['height'] = game.height
@@ -228,36 +225,32 @@ class MinimaxPlayer(IsolationPlayer):
         # Top node is set to -inf in case there are no legal moves
         scores_dict['0'] = [float('-inf')]
 
-        # Initial blank spaces
+        # Initial blank spaces used for finding the current level (depth)
         initial_blank_spaces = game.get_blank_spaces()
 
         while queue:
 
-            if self.time_left() < self.TIMER_THRESHOLD:
-                raise SearchTimeout()
-
-            # BFS so first in - first out and therefore using the first board state
+            # BFS so first in - first out and therefore using the first element
             l, g = queue.pop(0)
 
             # Finding the level explored so far based on the number of blank spaces
             blank_spaces = g.get_blank_spaces()
             level = len(initial_blank_spaces) - len(blank_spaces)
 
-            # Assuming we are maximizing the chance of player1, then the top level
-            # will do maximizing and then alternate after
-            player = game.active_player
+            # Assuming we are maximizing the chance of player1, then the top node level
+            # will do maximizing and  alternate after
+            player = [game._player_1, game._player_2][(level) % 2]
 
             # Possible moves are basically overlap of blank spaces and the possible moved
             possible_moves = g.get_legal_moves()
             possible_moves = list(set(possible_moves) & set(blank_spaces))
 
             # If reached the bottom level, just return the scores -- Nothing else to do
-            if level == depth:
+            if level == (depth - 1):
                 for i in range(len(possible_moves)):
                     # for move in possible_moves:
                     new_board = g.forecast_move(possible_moves[i])
                     scores_dict[str(l) + '-' + str(i)] = [self.score(new_board, player), possible_moves[i]]
-                    return scores_dict
 
             else:
                 for i in range(len(possible_moves)):
@@ -265,6 +258,7 @@ class MinimaxPlayer(IsolationPlayer):
                     new_board = g.forecast_move(possible_moves[i])
                     scores_dict[str(l) + '-' + str(i)] = [self.score(new_board, player), possible_moves[i]]
                     queue.append([str(l) + '-' + str(i), new_board])
+
 
         return scores_dict
 
@@ -277,7 +271,6 @@ class MinimaxPlayer(IsolationPlayer):
         scores: dictionary 'board state key': {'score', 'move'}
             scores for all the possible board states down to the depth.
             It also contains the depth explored.
-
         Returns
         -------
         (int, int)
@@ -300,56 +293,91 @@ class MinimaxPlayer(IsolationPlayer):
         while level >= 0:
 
             # Find all the nodes in the target level
-            # scores keys are constructed as level1-level2-...-leveln
+            # scores keys are constructed as level0-level1-level2-...-leveln
             nodes = [x for x in scores if (len(x.split('-')) - 1) == level]
 
-            # Find Min/Max for each node and keep track of all the moves that led to that
-            for node in nodes:
+
+            if level == 0:
 
                 # -inf for MAX (inf for Min) If there are no legal moves
                 max_score = float('-inf')
-                min_score = float('inf')
 
-                # The branching factor is definitely less than the board size!
-                try:
-                    # Go over all childs
-                    for i in range(width * height):
+                for node in nodes:
 
-                        # Find the child score
-                        child_node = node + '-' + str(i)
-                        child_score = scores[child_node][0]
+                    # The branching factor is definitely less than the board size!
+                    try:
+                        # Go over all childs
+                        for i in range(width * height):
 
-                        # Top node is maximizing and then alternates
-                        if level == 0:
+                            # Find the child score
+                            child_node = node + '-' + str(i)
+                            child_score = scores[child_node][0]
+
                             # If found a new MAX
                             if child_score > max_score:
                                 max_score = max(child_score, max_score)
                                 # Find the best move so far
                                 best_move = scores[child_node][-1]
-                                #scores['0'] = best_move
 
                             # Capture the final move
                             if max_score == float('-inf'):
-                                return (-1,-1)
+                                return (-1, -1)
                             else:
                                 return best_move
 
-                        elif level % 2 == 0:
+                    except:
+                        continue
+
+            elif level % 2 == 0:
+
+                # -inf for MAX (inf for Min) If there are no legal moves
+                max_score = float('-inf')
+
+                for node in nodes:
+
+                    # The branching factor is definitely less than the board size!
+                    try:
+                        # Go over all childs
+                        for i in range(width * height):
+
+                            # Find the child score
+                            child_node = node + '-' + str(i)
+                            child_score = scores[child_node][0]
+
                             # If found a new MAX
                             if child_score > max_score:
                                 max_score = max(child_score, max_score)
                                 # Updated the score with the new MAX
                                 scores[node][0] = max_score  # the same as child_score
 
-                        elif level % 2 == 1:
-                            # If found a new MIN
+                    except:
+                        continue
+
+
+            else:
+
+                # -inf for MAX (inf for Min) If there are no legal moves
+                min_score = float('inf')
+
+                for node in nodes:
+
+                    # The branching factor is definitely less than the board size!
+                    try:
+                        # Go over all childs
+                        for i in range(width * height):
+
+                            # Find the child score
+                            child_node = node + '-' + str(i)
+                            child_score = scores[child_node][0]
+
+                            # If found a new MAX
                             if child_score < min_score:
                                 min_score = min(child_score, min_score)
-                                # Updated the score with the new MIN
+                                # Updated the score with the new MAX
                                 scores[node][0] = min_score  # the same as child_score
 
-                except:
-                    continue
+                    except:
+                        continue
 
             # Move up on level and use the same logic -- MiniMax
             level -= 1
@@ -358,37 +386,30 @@ class MinimaxPlayer(IsolationPlayer):
     def minimax(self, game, depth):
         """Implement depth-limited minimax search algorithm as described in
         the lectures.
-
         This should be a modified version of MINIMAX-DECISION in the AIMA text.
         https://github.com/aimacode/aima-pseudocode/blob/master/md/Minimax-Decision.md
-
         **********************************************************************
             You MAY add additional methods to this class, or define helper
                  functions to implement the required functionality.
         **********************************************************************
-
         Parameters
         ----------
         game : isolation.Board
             An instance of the Isolation game `Board` class representing the
             current game state
-
         depth : int
             Depth is an integer representing the maximum number of plies to
             search in the game tree before aborting
-
         Returns
         -------
         (int, int)
             The board coordinates of the best move found in the current search;
             (-1, -1) if there are no legal moves
-
         Notes
         -----
             (1) You MUST use the `self.score()` method for board evaluation
                 to pass the project tests; you cannot call any other evaluation
                 function directly.
-
             (2) If you use any helper functions (e.g., as shown in the AIMA
                 pseudocode) then you must copy the timer check into the top of
                 each helper function or else your agent will timeout during
@@ -397,7 +418,7 @@ class MinimaxPlayer(IsolationPlayer):
         if self.time_left() < self.TIMER_THRESHOLD:
             raise SearchTimeout()
 
-        scores = self.iterative_deepening_depth_limited(game, depth)
+        scores = self.scores_depth_limited(game, depth)
         best_move = self.next_best_move(scores)
 
         return best_move
