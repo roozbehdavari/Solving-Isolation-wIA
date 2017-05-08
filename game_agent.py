@@ -254,7 +254,6 @@ class MinimaxPlayer(IsolationPlayer):
                     new_board = g.forecast_move(possible_moves[i])
                     queue.append([str(l) + '-' + str(i), new_board])
                     scores_dict[str(l) + '-' + str(i)] = [None, possible_moves[i]]
-                    ##scores_dict[str(l) + '-' + str(i)] = [self.score(new_board, player), possible_moves[i]]
 
         return scores_dict
 
@@ -330,26 +329,20 @@ class MinimaxPlayer(IsolationPlayer):
                     max_score = float('-inf')
 
                     # The branching factor is definitely less than the board size!
-
                     try:
 
                         # Go over all childs
-
                         for i in range(width * height):
 
                             # Find the child score
-
                             child_node = node + '-' + str(i)
-
                             child_score = scores[child_node][0]
 
                             # If found a new MAX
-
                             if child_score > max_score:
                                 max_score = max(child_score, max_score)
 
                                 # Updated the score with the new MAX
-
                                 scores[node][0] = max_score  # the same as child_score
 
 
@@ -367,28 +360,20 @@ class MinimaxPlayer(IsolationPlayer):
                     min_score = float('inf')
 
                     # The branching factor is definitely less than the board size!
-
                     try:
 
-                        # Go over all childs
-
+                        # Go over all children
                         for i in range(width * height):
 
                             # Find the child score
-
                             child_node = node + '-' + str(i)
-
                             child_score = scores[child_node][0]
 
-                            print(min_score, child_node, child_score)
-
                             # If found a new MAX
-
                             if child_score < min_score:
                                 min_score = min(child_score, min_score)
 
                                 # Updated the score with the new MAX
-
                                 scores[node][0] = min_score  # the same as child_score
 
 
