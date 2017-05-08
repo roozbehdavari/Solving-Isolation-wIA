@@ -208,8 +208,6 @@ class MinimaxPlayer(IsolationPlayer):
         scores: dictionary
             scores for all the possible board states down to the depth
         """
-        if self.time_left() < self.TIMER_THRESHOLD:
-            raise SearchTimeout()
 
         # Used for BFS search for each exploring children of each node
         queue = [['0', game]]
@@ -229,6 +227,8 @@ class MinimaxPlayer(IsolationPlayer):
         initial_blank_spaces = game.get_blank_spaces()
 
         while queue:
+            if self.time_left() < self.TIMER_THRESHOLD:
+                raise SearchTimeout()
 
             # BFS so first in - first out and therefore using the first element
             l, g = queue.pop(0)
@@ -246,19 +246,19 @@ class MinimaxPlayer(IsolationPlayer):
             possible_moves = list(set(possible_moves) & set(blank_spaces))
 
             # If reached the bottom level, just return the scores -- Nothing else to do
-            if level == (depth - 1):
+            if level == (depth - 1) or g.is_winner(g.get_opponent(player)):
                 for i in range(len(possible_moves)):
                     # for move in possible_moves:
                     new_board = g.forecast_move(possible_moves[i])
-                    scores_dict[str(l) + '-' + str(i)] = [self.score(new_board, player), possible_moves[i]]
+                    scores_dict[str(l) + '-' + str(i)] = [self.score(new_board, game._player_1), possible_moves[i]]
 
             else:
                 for i in range(len(possible_moves)):
                     # for move in possible_moves:
                     new_board = g.forecast_move(possible_moves[i])
-                    scores_dict[str(l) + '-' + str(i)] = [self.score(new_board, player), possible_moves[i]]
                     queue.append([str(l) + '-' + str(i), new_board])
-
+                    scores_dict[str(l) + '-' + str(i)] = [None, possible_moves[i]]
+                    ##scores_dict[str(l) + '-' + str(i)] = [self.score(new_board, player), possible_moves[i]]
 
         return scores_dict
 
@@ -298,10 +298,11 @@ class MinimaxPlayer(IsolationPlayer):
 
             if level == 0:
 
-                # -inf for MAX (inf for Min) If there are no legal moves
-                max_score = float('-inf')
                 best_move = (-1, -1)
+
                 for node in nodes:
+                    # -inf for MAX (inf for Min) If there are no legal moves
+                    max_score = float('-inf')
 
                     # The branching factor is definitely less than the board size!
                     try:
@@ -324,55 +325,79 @@ class MinimaxPlayer(IsolationPlayer):
 
 
 
-            elif level % 2 == 0:
 
-                # -inf for MAX (inf for Min) If there are no legal moves
-                max_score = float('-inf')
+            elif level % 2 == 0:
 
                 for node in nodes:
 
+                    # -inf for MAX (inf for Min) If there are no legal moves
+                    max_score = float('-inf')
+
                     # The branching factor is definitely less than the board size!
+
                     try:
+
                         # Go over all childs
+
                         for i in range(width * height):
 
                             # Find the child score
+
                             child_node = node + '-' + str(i)
+
                             child_score = scores[child_node][0]
 
                             # If found a new MAX
+
                             if child_score > max_score:
                                 max_score = max(child_score, max_score)
+
                                 # Updated the score with the new MAX
+
                                 scores[node][0] = max_score  # the same as child_score
 
+
                     except:
+
                         continue
+
 
 
             else:
 
-                # -inf for MAX (inf for Min) If there are no legal moves
-                min_score = float('inf')
-
                 for node in nodes:
 
+                    # -inf for MAX (inf for Min) If there are no legal moves
+                    min_score = float('inf')
+
                     # The branching factor is definitely less than the board size!
+
                     try:
+
                         # Go over all childs
+
                         for i in range(width * height):
 
                             # Find the child score
+
                             child_node = node + '-' + str(i)
+
                             child_score = scores[child_node][0]
 
+                            print(min_score, child_node, child_score)
+
                             # If found a new MAX
+
                             if child_score < min_score:
                                 min_score = min(child_score, min_score)
+
                                 # Updated the score with the new MAX
+
                                 scores[node][0] = min_score  # the same as child_score
 
+
                     except:
+
                         continue
 
             # Move up on level and use the same logic -- MiniMax
