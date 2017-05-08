@@ -237,16 +237,12 @@ class MinimaxPlayer(IsolationPlayer):
             blank_spaces = g.get_blank_spaces()
             level = len(initial_blank_spaces) - len(blank_spaces)
 
-            # Assuming we are maximizing the chance of player1, then the top node level
-            # will do maximizing and  alternate after
-            player = [game._player_1, game._player_2][(level) % 2]
-
             # Possible moves are basically overlap of blank spaces and the possible moved
             possible_moves = g.get_legal_moves()
             possible_moves = list(set(possible_moves) & set(blank_spaces))
 
             # If reached the bottom level, just return the scores -- Nothing else to do
-            if level == (depth - 1) or g.is_winner(g.get_opponent(player)):
+            if level == (depth - 1):
                 for i in range(len(possible_moves)):
                     # for move in possible_moves:
                     new_board = g.forecast_move(possible_moves[i])
