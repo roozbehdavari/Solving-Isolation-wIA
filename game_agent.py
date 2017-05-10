@@ -432,7 +432,7 @@ class AlphaBetaPlayer(IsolationPlayer):
     make sure it returns a good move before the search time limit expires.
     """
 
-    def get_move(self, game, time_left):
+    def get_move(self, game, time_left, alpha=float("-inf"), beta=float("inf")):
         """Search for the best move from the available legal moves and return a
         result before the time limit expires.
 
@@ -464,8 +464,262 @@ class AlphaBetaPlayer(IsolationPlayer):
         """
         self.time_left = time_left
 
+        # Initialize the best move so that this function returns something
+        # in case the search fails due to timeout
+        best_move = (-1, -1)
+
+        initial_depth = 1
+
         # TODO: finish this function!
-        raise NotImplementedError
+        while True:
+
+            if self.time_left() < self.TIMER_THRESHOLD:
+                return best_move
+                raise SearchTimeout()
+
+            try:
+                # The try/except block will automatically catch the exception
+                # raised when the timer is about to expire.
+                best_move  = self.alphabeta(game, initial_depth, alpha=float("-inf"), beta=float("inf"))
+
+            except SearchTimeout:
+                pass  # Handle any actions required after timeout as needed
+
+            initial_depth += 1
+
+        # Return the best move from the last completed search iteration
+        #return best_move
+
+    # TODO: finish this function!
+    def scores_depth_limited_alphaBeta(self, game, depth, alpha=float("-inf"), beta=float("inf")):
+        """
+        Find the scores for all the possible moves down to the given depth
+
+        Parameters
+        ----------
+        game : isolation.Board
+            An instance of the Isolation game `Board` class representing the
+            current game state
+        depth : int
+            Depth is an integer representing the maximum number of plies to
+            search in the game tree before aborting
+        Returns
+        -------
+        scores: dictionary
+            scores for all the possible board states down to the depth.
+            The value of the dictionary: [score, move, , alpha, beta, parent_node_id]
+        """
+
+        # Used for BFS search for each exploring children of each node
+        queue = [['0', game]]
+
+        # For capturing the scores
+        scores_dict = dict()
+
+        # Will be used for next_best_move function
+        scores_dict['depth'] = depth
+        scores_dict['width'] = game.width
+        scores_dict['height'] = game.height
+
+        # Top node is set to -inf in case there are no legal moves
+        scores_dict['0'] = [float('-inf'), (-1, -1), alpha, beta, None]
+
+        # Initial blank spaces used for finding the current level (depth)
+        initial_blank_spaces = game.get_blank_spaces()
+
+        while queue:
+            if self.time_left() < self.TIMER_THRESHOLD:
+                raise SearchTimeout()
+
+            # BFS so first in - first out and therefore using the first element
+            l, g = queue.pop(0)
+
+            # Finding the level explored so far based on the number of blank spaces
+            blank_spaces = g.get_blank_spaces()
+            level = len(initial_blank_spaces) - len(blank_spaces)
+
+            # Possible moves are basically overlap of blank spaces and the possible moved
+            possible_moves = g.get_legal_moves()
+            possible_moves = list(set(possible_moves) & set(blank_spaces))
+
+            # If reached the bottom level, just return the scores -- Nothing else to do
+            if level == (depth - 1):
+                for i in range(len(possible_moves)):
+                    # for move in possible_moves:
+                    new_board = g.forecast_move(possible_moves[i])
+                    scores_dict[str(l) + '-' + str(i)] = [self.score(new_board, game._player_1),
+                                                          possible_moves[i], alpha, beta, l]
+                    # Otherwise, add them to do the queue
+            else:
+                for i in range(len(possible_moves)):
+                    # for move in possible_moves:
+                    new_board = g.forecast_move(possible_moves[i])
+                    queue.append([str(l) + '-' + str(i), new_board])
+                    # Level refers to the parent node
+                    if level % 2 == 0:
+                        scores_dict[str(l) + '-' + str(i)] = [float('inf'), possible_moves[i], alpha, beta, l]
+                    else:
+                        scores_dict[str(l) + '-' + str(i)] = [float('-inf'), possible_moves[i], alpha, beta, l]
+
+        return scores_dict
+
+
+    def next_best_move_alphaBeta(self, scores):
+        """
+        Find the next best move using miniMax Logic
+        Parameters
+        ----------
+        scores: dictionary 'board state key': {'score', 'move'}
+            scores for all the possible board states down to the depth.
+            It also contains the depth explored.
+        Returns
+        -------
+        (int, int)
+            The board coordinates of the best move found in the current search;
+            (-1, -1) if there are no legal moves
+        """
+        if self.time_left() < self.TIMER_THRESHOLD:
+            raise SearchTimeout()
+
+        width = scores['width']
+        height = scores['height']
+
+        # MiniMax starts with the level right before the bottom level
+        level = scores['depth'] - 1
+
+        del scores['depth'], scores['width'], scores['height']
+
+        # Continue until we reach the top node
+        while level >= 0:
+
+            # Find all the nodes in the target level
+            # scores keys are constructed as level0-level1-level2-...-leveln
+            nodes = [x for x in scores if (len(x.split('-')) - 1) == level]
+
+            if level == 0:
+
+                best_move = (-1, -1)
+
+                for node in nodes:
+                    # -inf for MAX (inf for Min) If there are no legal moves
+                    max_score = scores[node][0]
+
+                    # The branching factor is definitely less than the board size!
+                    try:
+                        # Go over all childs
+                        for i in range(width * height):
+
+                            # Find the child score
+                            child_node = node + '-' + str(i)
+                            child_score = scores[child_node][0]
+                            node_alpha = scores[node][2]
+
+                            # Each Child's Score needs to be GREATER than parent's ALPHA -- Otherwise break
+                            if child_score > node_alpha:
+                                # If found a new MAX
+                                if child_score > max_score:
+                                    max_score = child_score
+                                    # Update the parent node ALPHA
+                                    scores[node][1] = max_score
+                                    # Updated the score with the new MAX
+                                    scores[node][0] = max_score  # the same as child_score
+                                    # Find the best move so far
+                                    best_move = scores[child_node][1]
+
+                    except:
+                        continue
+
+                return best_move
+
+
+            # A Miximizer
+            elif level % 2 == 0:
+
+                for node in nodes:
+
+                    # Each Node's Score needs to be LESS than parent's BETA -- Otherwise break
+                    node_score = scores[node][0]
+                    parent_node = scores[node][-1]
+                    parent_beta = scores[parent_node][-2]
+
+                    if node_score < parent_beta:
+
+                        # -inf for MAX (inf for Min) If there are no legal moves
+                        max_score = scores[node][0]
+
+                        # The branching factor is definitely less than the board size!
+                        try:
+                            # Go over all childs
+                            for i in range(width * height):
+
+                                # Find the child score
+                                child_node = node + '-' + str(i)
+                                child_score = scores[child_node][0]
+                                node_alpha = scores[node][2]
+
+                                # Each Child's Score needs to be GREATER than parent's ALPHA -- Otherwise break
+                                if child_score > node_alpha:
+                                    # If found a new MAX
+                                    if child_score > max_score:
+                                        max_score = child_score
+                                        # Update the parent node ALPHA
+                                        scores[node][2] = max_score
+                                        # Updated the score with the new MAX
+                                        scores[node][0] = max_score  # the same as child_score
+
+                            # Update Parent's BETA before proceeding
+                            scores[parent_node][-2] = node_score
+
+                        except:
+                            continue
+
+
+            # A Minimizer
+            else:
+
+                for node in nodes:
+
+                    # Each Node's Score needs to be GREATER than parent's ALPHA -- Otherwise break
+                    node_score = scores[node][0]
+                    parent_node = scores[node][-1]
+                    parent_alpha = scores[parent_node][2]
+
+                    if node_score > parent_alpha:
+
+                        # -inf for MAX (inf for Min) If there are no legal moves
+                        min_score = scores[node][0]
+
+                        # The branching factor is definitely less than the board size!
+                        try:
+                            # Go over all childs
+                            for i in range(width * height):
+
+                                # Find the child score
+                                child_node = node + '-' + str(i)
+                                child_score = scores[child_node][0]
+                                node_beta = scores[node][-2]
+
+                                # Each Child's Score needs to be LESS than parent's BETA -- Otherwise break
+                                if child_score < node_beta:
+
+                                    # If found a new MIN
+                                    if child_score < min_score:
+                                        min_score = child_score
+                                        # Update the parent node ALPHA
+                                        scores[node][-2] = min_score
+                                        # Updated the score with the new MAX
+                                        scores[node][0] = min_score  # the same as child_score
+
+                            # Update Parent's ALPHA before proceeding
+                            scores[parent_node][2] = node_score
+
+                        except:
+                            continue
+
+            # Move up on level and use the same logic -- MiniMax
+            level -= 1
+
+
 
     def alphabeta(self, game, depth, alpha=float("-inf"), beta=float("inf")):
         """Implement depth-limited minimax search with alpha-beta pruning as
@@ -516,4 +770,7 @@ class AlphaBetaPlayer(IsolationPlayer):
             raise SearchTimeout()
 
         # TODO: finish this function!
-        raise NotImplementedError
+        scores = self.scores_depth_limited_alphaBeta(game, depth)
+        best_move = self.next_best_move_alphaBeta(scores)
+
+        return best_move
