@@ -473,25 +473,22 @@ class AlphaBetaPlayer(IsolationPlayer):
         # TODO: finish this function!
         while True:
 
-            if self.time_left() < self.TIMER_THRESHOLD:
-                return best_move
-                raise SearchTimeout()
-
             try:
                 # The try/except block will automatically catch the exception
                 # raised when the timer is about to expire.
-                best_move  = self.alphabeta(game, initial_depth, alpha=float("-inf"), beta=float("inf"))
+                best_move  = self.alphabeta(game, initial_depth, alpha, beta)
 
             except SearchTimeout:
                 pass  # Handle any actions required after timeout as needed
+                # Return the best move from the last completed search iteration
+                return best_move
 
             initial_depth += 1
 
-        # Return the best move from the last completed search iteration
-        #return best_move
+
 
     # TODO: finish this function!
-    def scores_depth_limited_alphaBeta(self, game, depth, alpha=float("-inf"), beta=float("inf")):
+    def scores_depth_limited_alphaBeta(self, game, depth, alpha, beta):
         """
         Find the scores for all the possible moves down to the given depth
 
@@ -549,7 +546,8 @@ class AlphaBetaPlayer(IsolationPlayer):
                     new_board = g.forecast_move(possible_moves[i])
                     scores_dict[str(l) + '-' + str(i)] = [self.score(new_board, game._player_1),
                                                           possible_moves[i], alpha, beta, l]
-                    # Otherwise, add them to do the queue
+
+            # Otherwise, add them to do the queue
             else:
                 for i in range(len(possible_moves)):
                     # for move in possible_moves:
@@ -770,7 +768,7 @@ class AlphaBetaPlayer(IsolationPlayer):
             raise SearchTimeout()
 
         # TODO: finish this function!
-        scores = self.scores_depth_limited_alphaBeta(game, depth)
+        scores = self.scores_depth_limited_alphaBeta(game, depth, alpha, beta)
         best_move = self.next_best_move_alphaBeta(scores)
 
         return best_move
