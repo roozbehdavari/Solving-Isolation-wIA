@@ -726,7 +726,7 @@ class AlphaBetaPlayer(IsolationPlayer):
                 return self.next_best_move_alphaBeta(input_scores, width, height,
                                                          stack=stack, alpha=alpha, beta=beta)
 
- 
+
 
     def alphabeta(self, game, depth, alpha=float("-inf"), beta=float("inf")):
         """Implement depth-limited minimax search with alpha-beta pruning as
