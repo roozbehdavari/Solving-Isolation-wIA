@@ -43,13 +43,12 @@ def custom_score(game, player):
 
     own_moves = len(game.get_legal_moves(player))
     opp_moves = len(game.get_legal_moves(game.get_opponent(player)))
-    improved_move_score = float(own_moves - opp_moves)
 
     w, h = game.width, game.height
     y, x = game.get_player_location(player)
     center_score = float((h - y) ** 2 + (w - x) ** 2)
 
-    return float(own_moves - opp_moves)/(center_score)**0.5
+    return float(own_moves - opp_moves) * (center_score)**0.5
 
 
 
@@ -84,13 +83,12 @@ def custom_score_2(game, player):
 
     own_moves = len(game.get_legal_moves(player))
     opp_moves = len(game.get_legal_moves(game.get_opponent(player)))
-    improved_move_score = float(own_moves - opp_moves)
 
     w, h = game.width, game.height
     y, x = game.get_player_location(player)
     center_score = float((h - y) ** 2 + (w - x) ** 2)
 
-    return float(own_moves - opp_moves) / (center_score)
+    return float(own_moves - opp_moves) * (center_score)
 
 
 def custom_score_3(game, player):
@@ -128,7 +126,7 @@ def custom_score_3(game, player):
     y, x = game.get_player_location(player)
     center_score = float((h - y) ** 2 + (w - x) ** 2)
 
-    return float(own_moves) / (center_score)
+    return float(own_moves) * (center_score)
 
 
 class IsolationPlayer:
@@ -362,7 +360,6 @@ class MinimaxPlayer(IsolationPlayer):
                                 # Updated the score with the new MAX
                                 scores[node][0] = max_score  # the same as child_score
 
-
                     except:
 
                         continue
@@ -443,6 +440,7 @@ class MinimaxPlayer(IsolationPlayer):
         return best_move
 
 
+
 class AlphaBetaPlayer(IsolationPlayer):
     """Game-playing agent that chooses a move using iterative deepening minimax
     search with alpha-beta pruning. You must finish and test this player to
@@ -493,10 +491,10 @@ class AlphaBetaPlayer(IsolationPlayer):
             try:
                 # The try/except block will automatically catch the exception
                 # raised when the timer is about to expire.
-                best_move  = self.alphabeta(game, initial_depth, alpha, beta)
+                best_move = self.alphabeta(game, initial_depth, alpha, beta)
 
             except SearchTimeout:
-                pass  # Handle any actions required after timeout as needed
+                # Handle any actions required after timeout as needed
                 # Return the best move from the last completed search iteration
                 return best_move
 
@@ -522,20 +520,22 @@ class AlphaBetaPlayer(IsolationPlayer):
             The value of the dictionary: [score, move, , alpha, beta, parent_node_id]
         """
 
-        # Used for BFS search for each exploring children of each node
+        # Using BFS for exploring children of each node
         queue = [['0', game]]
 
         # For capturing the scores
         scores_dict = dict()
 
+        # Used for setting the unexplored node to their worse possible value
         inf = float('inf')
-
-        # Top node is set to -inf in case there are no legal moves
-        scores_dict['0'] = {'score': -inf, 'move': (-1, -1), 'alpha': alpha,
-                            'beta': beta, 'parent': None, 'level': 0}
 
         # Initial blank spaces used for finding the current level (depth)
         initial_blank_spaces = game.get_blank_spaces()
+
+        # Top node score and move are set to -inf and (-1,-1), respectively,
+        # in case there are no legal moves
+        scores_dict['0'] = {'score': -inf, 'move': (-1, -1), 'alpha': alpha,
+                            'beta': beta, 'parent': None, 'level': 0, 'children': []}
 
         while queue:
 
@@ -543,6 +543,7 @@ class AlphaBetaPlayer(IsolationPlayer):
                 raise SearchTimeout()
 
             # BFS so first in - first out and therefore using the first element
+            # l:level & g:boardState (game)
             l, g = queue.pop(0)
 
             # Finding the level explored so far based on the number of blank spaces
@@ -553,37 +554,62 @@ class AlphaBetaPlayer(IsolationPlayer):
             possible_moves = g.get_legal_moves()
             possible_moves = list(set(possible_moves) & set(blank_spaces))
 
-            # If reached the bottom level, just return the scores -- Nothing else to do
+            # If reached the bottom level, just return the scores -- Do not add to the queue.
             if level == (depth - 1):
+
+                # for move in possible_moves:
                 for i in range(len(possible_moves)):
-                    # for move in possible_moves:
-                    new_board = g.forecast_move(possible_moves[i])
+                    # Child node
+                    child_node = possible_moves[i]
+
+                    # Adding to the list of the children
+                    scores_dict[l]['children'].append(str(l) + '-' + str(i))
+
+                    # Finding the state of the board after applyting the possible move
+                    new_board = g.forecast_move(child_node)
+
+                    # Including them in the dictionary
                     scores_dict[str(l) + '-' + str(i)] = {'score': self.score(new_board, game._player_1),
-                                                          'move': possible_moves[i], 'alpha': alpha,
-                                                          'beta': beta, 'parent': l, 'level': level + 1}
+                                                          'move': child_node, 'alpha': alpha,
+                                                          'beta': beta, 'parent': l,
+                                                          'level': level + 1, 'children': []}
 
             # Otherwise, add them to do the queue
             else:
+
+                # for move in possible_moves:
                 for i in range(len(possible_moves)):
-                    # for move in possible_moves:
-                    new_board = g.forecast_move(possible_moves[i])
+
+                    # Child node
+                    child_node = possible_moves[i]
+
+                    # Adding to the list of the children
+                    scores_dict[l]['children'].append(str(l) + '-' + str(i))
+
+                    # Finding the state of the board after applyting the possible move
+                    new_board = g.forecast_move(child_node)
+
+                    # Adding the next board to the queue to find its children
                     queue.append([str(l) + '-' + str(i), new_board])
-                    # Level refers to the parent node
-                    if level % 2 == 0:
-                        scores_dict[str(l) + '-' + str(i)] = {'score': inf, 'move': possible_moves[i],
+
+                    # Including them in the dictionary
+                    # Although there exist values only for the bottom level nodes
+                    # all nodes need to be included for find the next_best_move
+
+                    if level % 2 == 0:  # Minimizer
+                        scores_dict[str(l) + '-' + str(i)] = {'score': inf, 'move': child_node,
                                                               'alpha': alpha, 'beta': beta, 'parent': l,
-                                                              'level': level + 1}
-                    else:
-                        scores_dict[str(l) + '-' + str(i)] = {'score': -inf, 'move': possible_moves[i],
+                                                              'level': level + 1, 'children': []}
+                    else:  # Maximizer
+                        scores_dict[str(l) + '-' + str(i)] = {'score': -inf, 'move': child_node,
                                                               'alpha': alpha, 'beta': beta, 'parent': l,
-                                                              'level': level + 1}
+                                                              'level': level + 1, 'children': []}
 
         return scores_dict
 
 
 
-    def next_best_move_alphaBeta(self, input_scores, width, height, stack=['0'],
-                                     explored=[], alpha=-float('inf'), beta=float('inf')):
+    def next_best_move_alphaBeta(self, input_scores, stack=['0'], depth=3):
         """
         Find the next best move using miniMax Logic
         Parameters
@@ -607,124 +633,196 @@ class AlphaBetaPlayer(IsolationPlayer):
         else:
 
             node = stack.pop()
-            explored.append(node)
 
             # For top node, there is no parent
+            # And it is just the matter of capturing the children nodes
+            # For the following DFS
             if input_scores[node]['level'] == 0:
 
-                # The branching factor is definitely less than the board size!
-                for i in range(width * height, -1, -1):
+                # Adding all the children to the stack
+                for child_node in input_scores[node]['children'][::-1]:
+                    # Add them to the stack as this is a DFS
+                    stack.append(child_node)
 
-                    child_node = node[0] + '-' + str(i)
-
-                    # Go over all children
-                    if child_node in input_scores:
-
-                        stack.append(child_node)
-
-                        # Find the node and its child's score
-                        child_score = input_scores[child_node]['score']
-                        node_score = input_scores[node]['score']
-
-                        # Each Child's Score needs to be GREATER than parent's Score -- Otherwise do nothing
-                        if (child_score > node_score) and (child_score != float('inf')):
-                            # Update the parent node score
-                            input_scores[node]['score'] = child_score
-
-                return self.next_best_move_alphaBeta(input_scores, width, height,
-                                                         stack=stack, alpha=alpha, beta=beta)
+                return self.next_best_move_alphaBeta(input_scores, stack=stack)
 
 
             # If a MiniMizer
-            elif input_scores[node]['level'] % 2 == 1:
+            elif (input_scores[node]['level'] % 2 == 1) and (input_scores[node]['level'] != depth):
 
-                # Each Node's Score needs to be LEss than parent's BETA -- Otherwise break
-                node_score = input_scores[node]['score']
+                # Finding the parent node, in case need to traverse back up
+                # And inheriting the Beta/Alpha
                 parent_node = input_scores[node]['parent']
-                parent_alpha = input_scores[parent_node]['alpha']
 
-                if node_score > parent_alpha:
+                # And remove the child from the parents list of children (to be explored)
+                # It is important to do so, as only when all the children are
+                # explored, updating parents alpha/beta can be done.
+                input_scores[parent_node]['children'].remove(node)
 
-                    # The branching factor is definitely less than the board size!
-                    for i in range(width * height, -1, -1):
+                # Alpha and Beta are always inherited from the parent node
+                input_scores[node]['alpha'] = input_scores[parent_node]['alpha']
+                input_scores[node]['beta'] = input_scores[parent_node]['beta']
 
-                        child_node = node + '-' + str(i)
+                # Flag for pruning. If not pruning, traverse up the tree
+                pruned = False
 
-                        # Go over all childs
-                        if child_node in input_scores:
+                # Adding all the children to the stack
+                for child_node in input_scores[node]['children'][::-1]:
 
-                            stack.append(child_node)
+                    # Add them to the stack as this is a DFS
+                    stack.append(child_node)
 
-                            # Compare Node and its child's score
-                            child_score = input_scores[child_node]['score']
+                    # If these condition is not met --> Pruning can take place
+                    if input_scores[node]['beta'] > input_scores[node]['alpha']:
 
-                            # Each Child's Score needs to be GREATER than parent's Score -- Otherwise do nothing
-                            if (child_score < beta) and (child_score != -float('inf')):
+                        # Only if the children have a value other than the
+                        # initial given values, the node values can get updated
+                        if input_scores[child_node]['score'] != -float('inf'):
+                            # Update Node's Score & Beta before proceeding
+                            input_scores[node]['score'] = min(input_scores[node]['score'],
+                                                              input_scores[child_node]['score'])
+                            input_scores[node]['beta'] = min(input_scores[node]['beta'],
+                                                             input_scores[node]['score'])
 
-                                # Update the parent node score
-                                input_scores[node]['score'] = child_score
+                            # And remove the child from the parents list of children (to be explored)
+                            # It is important to do so, as only when all the children are
+                            # explored, updating parents alpha/beta can be done.
+                            input_scores[node]['children'].remove(child_node)
 
-                                # Update Node's BETA before proceeding
-                                input_scores[node]['beta'] = min(input_scores[node]['score'],
-                                                                 input_scores[node]['beta'])
+                    else:
+                        pruned = True
+                        input_scores[node]['children'].remove(child_node)
 
-                    # Updates all the parent nodes along the path to the root node
-                    if input_scores[node]['score'] != float('inf'):
-                        # Update Parent's ALPHA before proceeding
-                        alpha = max(input_scores[node]['beta'], input_scores[parent_node]['alpha'])
-                        input_scores[parent_node]['alpha'] = alpha
-                        input_scores[parent_node]['score'] = max(input_scores[node]['score'],
-                                                                 input_scores[parent_node]['score'])
 
-                return self.next_best_move_alphaBeta(input_scores, width, height,
-                                                         stack=stack, alpha=alpha, beta=beta)
+                # Updates all the parent nodes along the path to the root node
+                if input_scores[node]['score'] != float('inf'):
+
+                    while (len(node) > 1) and (not input_scores[node]['children']):
+
+                        # Minimizer
+                        if len(node.split('-')) % 2 == 0:
+
+                            parent_alpha = max(input_scores[node]['beta'],
+                                               input_scores[parent_node]['alpha'])
+                            input_scores[parent_node]['alpha'] = parent_alpha
+
+                            parent_score = max(input_scores[node]['score'],
+                                               input_scores[parent_node]['score'])
+
+                            # If it is the top node, inheret the move, as well!
+                            if parent_node == '0' and float(input_scores[node]['score']) >= float(input_scores[parent_node]['score']):
+
+                                input_scores[parent_node]['move'] = input_scores[node]['move']
+
+                            input_scores[parent_node]['score'] = parent_score
+
+                        # Maximizer
+                        else:
+
+                            parent_beta = min(input_scores[node]['alpha'],
+                                              input_scores[parent_node]['beta'])
+                            input_scores[parent_node]['beta'] = parent_beta
+
+                            parent_score = min(input_scores[node]['score'],
+                                               input_scores[parent_node]['score'])
+                            input_scores[parent_node]['score'] = parent_score
+
+                        # Going a level higher
+                        node, parent_node = parent_node, parent_node[:-2]
+
+                return self.next_best_move_alphaBeta(input_scores, stack=stack)
 
 
 
             # If a MAXIMIZER
-            elif input_scores[node]['level'] % 2 == 0:
+            elif (input_scores[node]['level'] % 2 == 0) and (input_scores[node]['level'] != depth):
 
-                # Each Node's Score needs to be LEss than parent's BETA -- Otherwise break
-                node_score = input_scores[node]['score']
+                # Finding the parent node, in case need to traverse back up
+                # And inheriting the Beta/Alpha
                 parent_node = input_scores[node]['parent']
-                parent_beta = input_scores[parent_node]['beta']
+
+                # And remove the child from the parents list of children (to be explored)
+                # It is important to do so, as only when all the children are
+                # explored, updating parents alpha/beta can be done.
+                input_scores[parent_node]['children'].remove(node)
+
+                # Alpha and Beta are always inherited from the parent node
+                input_scores[node]['alpha'] = input_scores[parent_node]['alpha']
+                input_scores[node]['beta'] = input_scores[parent_node]['beta']
+
+                # Flag for pruning. If not pruning, traverse up the tree
+                pruned = False
+
+                # Adding all the children to the stack
+                for child_node in input_scores[node]['children'][::-1]:
+
+                    # Add them to the stack as this is a DFS
+                    stack.append(child_node)
+
+                    # If these condition is not met --> Pruning can take place
+                    if input_scores[node]['beta'] > input_scores[node]['alpha']:
+
+                        # Only if the children have a value other than the
+                        # initial given values, the node values can get updated
+                        if input_scores[child_node]['score'] != float('inf'):
+                            # Update Node's Score & ALPHA before proceeding
+                            input_scores[node]['score'] = max(input_scores[node]['score'],
+                                                              input_scores[child_node]['score'])
+                            input_scores[node]['alpha'] = max(input_scores[node]['alpha'],
+                                                              input_scores[node]['score'])
+
+                            # And remove the child from the parents list of children (to be explored)
+                            # It is important to do so, as only when all the children are
+                            # explored, updating parents alpha/beta can be done.
+                            input_scores[node]['children'].remove(child_node)
+
+                    else:
+                        pruned = True
+                        input_scores[node]['children'].remove(child_node)
 
 
-                if node_score < parent_beta:
+                # Updates all the parent nodes along the path to the root node
+                if input_scores[node]['score'] != -float('inf'):
 
-                    # The branching factor is definitely less than the board size!
-                    for i in range(width * height, -1, -1):
+                    while (len(node) > 1) and (not input_scores[node]['children']):
 
-                        child_node = node + '-' + str(i)
+                        # Minimizer
+                        if len(node.split('-')) % 2 == 0:
 
-                        # Go over all childs
-                        if child_node in input_scores:
+                            parent_alpha = max(input_scores[node]['beta'],
+                                               input_scores[parent_node]['alpha'])
+                            input_scores[parent_node]['alpha'] = parent_alpha
 
-                            stack.append(child_node)
+                            parent_score = max(input_scores[node]['score'],
+                                               input_scores[parent_node]['score'])
 
-                            # Compare Node and its child's score
-                            child_score = input_scores[child_node]['score']
+                            # If it is the top node, inheret the move, as well!
+                            if parent_node == '0' and float(input_scores[node]['score']) >= float(input_scores[parent_node]['score']):
 
-                            # Each Child's Score needs to be GREATER than parent's Score -- Otherwise do nothing
-                            if (child_score > alpha) and (child_score != float('inf')):
+                                input_scores[parent_node]['move'] = input_scores[node]['move']
 
-                                # Update the parent node score
-                                input_scores[node]['score'] = child_score
+                            input_scores[parent_node]['score'] = parent_score
 
-                                # Update Node's ALPHA before proceeding
-                                input_scores[node]['alpha'] = max(input_scores[node]['score'],
-                                                                  input_scores[node]['alpha'])
+                        # Maximizer
+                        else:
 
-                    # Updates all the parent nodes along the path to the root node
-                    if input_scores[node]['score'] != -float('inf'):
-                        # Update Parent's BETA before proceeding
-                        beta = min(input_scores[node]['alpha'], input_scores[parent_node]['beta'])
-                        input_scores[parent_node]['beta'] = beta
-                        input_scores[parent_node]['score'] = min(input_scores[node]['score'],
-                                                                 input_scores[parent_node]['score'])
+                            parent_beta = min(input_scores[node]['alpha'],
+                                              input_scores[parent_node]['beta'])
+                            input_scores[parent_node]['beta'] = parent_beta
 
-                return self.next_best_move_alphaBeta(input_scores, width, height,
-                                                         stack=stack, alpha=alpha, beta=beta)
+                            parent_score = min(input_scores[node]['score'],
+                                               input_scores[parent_node]['score'])
+                            input_scores[parent_node]['score'] = parent_score
+
+                        # Going a level higher
+                        node, parent_node = parent_node, parent_node[:-2]
+
+                return self.next_best_move_alphaBeta(input_scores, stack=stack)
+
+
+            # In the case it is the bottom level children, just continue
+            else:
+                return self.next_best_move_alphaBeta(input_scores, stack=stack)
 
 
 
@@ -777,7 +875,7 @@ class AlphaBetaPlayer(IsolationPlayer):
             raise SearchTimeout()
 
         # TODO: finish this function!
-        scores = self.scores_depth_limited_alphaBeta(game, depth, alpha, beta)
-        best_move = self.next_best_move_alphaBeta(scores, width=game.width, height=game.height)
+        scores = self.scores_depth_limited_alphaBeta(game, depth, alpha=alpha, beta=beta)
+        best_move = self.next_best_move_alphaBeta(scores, depth=depth)
 
         return best_move
