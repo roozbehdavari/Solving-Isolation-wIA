@@ -44,12 +44,12 @@ def custom_score(game, player):
     own_moves = len(game.get_legal_moves(player))
     opp_moves = len(game.get_legal_moves(game.get_opponent(player)))
 
-    w, h = game.width, game.height
-    y, x = game.get_player_location(player)
-    center_score = float((h - y) ** 2 + (w - x) ** 2)
+    y1, x1 = game.get_player_location(player)
+    y2, x2 = game.get_player_location(game.get_opponent(player))
 
-    return float(own_moves - opp_moves) * (center_score)**0.5
+    vicinity = float((y1 - y2) ** 2 + (x1 - x2) ** 2)**.5
 
+    return vicinity + float(own_moves - opp_moves)
 
 
 def custom_score_2(game, player):
@@ -85,10 +85,13 @@ def custom_score_2(game, player):
     opp_moves = len(game.get_legal_moves(game.get_opponent(player)))
 
     w, h = game.width, game.height
-    y, x = game.get_player_location(player)
-    center_score = float((h - y) ** 2 + (w - x) ** 2)
+    y1, x1 = game.get_player_location(player)
+    y2, x2 = game.get_player_location(game.get_opponent(player))
 
-    return float(own_moves - opp_moves) * (center_score)
+    center_score1 = float((h - y1) ** 2 + (w - x1) ** 2)
+    center_score2 = float((h - y2) ** 2 + (w - x2) ** 2)
+
+    return float(center_score1 - center_score2) + float(own_moves - opp_moves)
 
 
 def custom_score_3(game, player):
@@ -121,12 +124,16 @@ def custom_score_3(game, player):
         return float("inf")
 
     own_moves = len(game.get_legal_moves(player))
+    opp_moves = len(game.get_legal_moves(game.get_opponent(player)))
 
     w, h = game.width, game.height
-    y, x = game.get_player_location(player)
-    center_score = float((h - y) ** 2 + (w - x) ** 2)
+    y1, x1 = game.get_player_location(player)
+    y2, x2 = game.get_player_location(game.get_opponent(player))
 
-    return float(own_moves) * (center_score)
+    center_score1 = float((h - y1) ** 2 + (w - x1) ** 2)
+    center_score2 = float((h - y2) ** 2 + (w - x2) ** 2)
+
+    return float(center_score1 - center_score2) * float(own_moves - opp_moves)
 
 
 class IsolationPlayer:
